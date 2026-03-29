@@ -1,6 +1,6 @@
 # PONG! em C
 
-Recriação do jogo PONG! em C dedicado a funcionar na versão de Sega Dreamcast, para fins de cumprimento acadêmico da displina Progamação I do curso de Engenharia da Computação na UFPB campus Mangabeira.
+Recriação do jogo PONG! em C dedicado a funcionar na versão de Sega Dreamcast, para fins de cumprimento acadêmico da displina Progamação I do curso de Engenharia da Computação na UFPB *campus* Mangabeira.
 
 O código-fonte só funcionará se tiver o comando mkdcdisk (Make Dreamcast Disc) e o dcbuild instalado, que por sua vez é disponibilizado apenas para sistemas Linux (Você pode usar DreamSDK incluindo interface gráfica caso você esteja no Windows).
 
