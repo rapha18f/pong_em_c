@@ -6,7 +6,7 @@ O código-fonte só funcionará se tiver o comando mkdcdisk (Make Dreamcast Disc
 
 ## Instalação:
 ```bash
-> sudo apt install docker #Caso não tenha instalado e seu sistema for Debian/Ubuntu
+> #Caso tenha instalado
   sudo wget -O /usr/local/bin/dcbuild https://raw.githubusercontent.com/Nold360/docker-kallistios-sdk/master/dcbuild.sh
   sudo chmod +x /usr/local/bin/dcbuild
   sudo usermod -aG docker $USER
