@@ -35,21 +35,26 @@ jobs:
             /bin/bash -c '
               echo "Configurando ambiente KOS para Dreamcast..."
               
-              # Procura o environ.dreamcast.sh
-              if [ -f /opt/kos/environ.dreamcast.sh ]; then
-                source /opt/kos/environ.dreamcast.sh
-              elif [ -f /opt/toolchains/dc/kos/environ.dreamcast.sh ]; then
-                source /opt/toolchains/dc/kos/environ.dreamcast.sh
+              # Procura o environ_dreamcast.sh (com UNDERLINE)
+              if [ -f /environ_dreamcast.sh ]; then
+                echo "✅ Encontrado em: /environ_dreamcast.sh"
+                source /environ_dreamcast.sh
+              elif [ -f /opt/kos/environ_dreamcast.sh ]; then
+                echo "✅ Encontrado em: /opt/kos/environ_dreamcast.sh"
+                source /opt/kos/environ_dreamcast.sh
+              elif [ -f /opt/toolchains/dc/kos/environ_dreamcast.sh ]; then
+                echo "✅ Encontrado em: /opt/toolchains/dc/kos/environ_dreamcast.sh"
+                source /opt/toolchains/dc/kos/environ_dreamcast.sh
               else
-                echo "❌ environ.dreamcast.sh não encontrado!"
+                echo "❌ environ_dreamcast.sh não encontrado!"
                 echo "Procurando em toda parte..."
-                find / -name "environ*.sh" 2>/dev/null | grep -i kos
+                find / -name "environ*.sh" 2>/dev/null | head -20
                 exit 1
               fi
               
               echo "KOS_BASE = $KOS_BASE"
               echo ""
-              echo "Conteúdo do diretório:"
+              echo "Conteúdo do diretório de trabalho:"
               ls -la
               echo ""
               echo "Conteúdo da pasta src/:"
@@ -57,18 +62,25 @@ jobs:
               echo ""
               echo "Iniciando compilação..."
               
+              # Faz um make com verbose para ver detalhes
               make clean
-              make -j$(nproc)
+              make -j$(nproc) 2>&1
               
               EXIT_CODE=$?
               
               echo ""
+              echo "========================================="
               echo "Resultado:"
+              echo "========================================="
               if [ $EXIT_CODE -eq 0 ]; then
                 echo "✅ Compilação bem sucedida!"
+                echo ""
+                echo "Arquivos gerados:"
                 ls -la *.elf 2>/dev/null || echo "⚠️ Nenhum .elf encontrado"
               else
                 echo "❌ Compilação falhou! Código: $EXIT_CODE"
+                echo ""
+                echo "Verifique os erros acima para corrigir o código."
               fi
               
               exit $EXIT_CODE
@@ -81,11 +93,15 @@ jobs:
           echo "========================================="
           ls -la *.elf 2>/dev/null || echo "❌ NENHUM .elf encontrado!"
           
-          if [ ! -f *.elf ] 2>/dev/null; then
+          # Conta quantos .elf existem
+          ELF_COUNT=$(ls -1 *.elf 2>/dev/null | wc -l)
+          if [ $ELF_COUNT -eq 0 ]; then
             echo "❌ ERRO: Nenhum .elf foi gerado!"
+            echo ""
+            echo "Isso indica que a compilação falhou. Veja os logs acima."
             exit 1
           fi
-          echo "✅ .elf encontrado!"
+          echo "✅ $ELF_COUNT arquivo(s) .elf encontrado(s)!"
 
       - name: Instalar mkdcdisk
         if: success()
