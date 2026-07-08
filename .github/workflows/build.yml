@@ -5,45 +5,34 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  inspect:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do projeto
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Baixar imagem oficial do KallistiOS
-        run: |
-          docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
+      - name: Baixar imagem
+        run: docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
+
       - name: Inspecionar imagem
         run: |
-          docker run --rm \
-          ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
-          /bin/bash -c "
-          pwd
-          ls /
-          echo
-          echo '=== /opt ==='
-          ls -R /opt || true
-          echo
-          echo '=== variáveis ==='
-          env | sort
-         "
-
-      - name: Verificar arquivo gerado
-        run: |
-          ls -lh
-          test -f pong.elf
-
-      - name: Publicar pong.elf
-        uses: actions/upload-artifact@v4
-        with:
-          name: pong-elf
-          path: pong.elf
+          docker run --rm ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
+          /bin/bash -c '
+            pwd
+            echo "===== / ====="
+            ls -la /
+            echo "===== /opt ====="
+            ls -la /opt || true
+            echo "===== procurando environ ====="
+            find / -name "environ*" 2>/dev/null
+            echo "===== procurando Makefile.rules ====="
+            find / -name "Makefile.rules" 2>/dev/null
+            echo "===== ambiente ====="
+            env | sort
+          '
