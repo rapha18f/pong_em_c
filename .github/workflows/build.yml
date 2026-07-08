@@ -12,57 +12,79 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Instalar dcbuild
-        run: |
-          sudo wget -O /usr/local/bin/dcbuild https://raw.githubusercontent.com/Nold360/docker-kallistios-sdk/master/dcbuild.sh
-          sudo chmod +x /usr/local/bin/dcbuild
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compilar com dcbuild (COM LOG COMPLETO)
+      - name: Baixar toolchain
+        run: docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
+
+      - name: Compilar o jogo
         run: |
           echo "========================================="
-          echo "Iniciando compilação com dcbuild..."
+          echo "Compilando com Docker direto..."
           echo "========================================="
           
-          # Executa o dcbuild e captura TODA a saída
-          dcbuild make 2>&1
-          
-          # Salva o código de saída
-          EXIT_CODE=$?
-          
-          echo ""
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
+            /bin/bash -c '
+              echo "Configurando ambiente KOS..."
+              
+              # Procura o environ.sh
+              if [ -f /opt/kos/environ.sh ]; then
+                source /opt/kos/environ.sh
+              elif [ -f /opt/toolchains/dc/kos/environ.sh ]; then
+                source /opt/toolchains/dc/kos/environ.sh
+              else
+                echo "❌ environ.sh não encontrado!"
+                find / -name "environ.sh" 2>/dev/null
+                exit 1
+              fi
+              
+              echo "KOS_BASE = $KOS_BASE"
+              echo ""
+              echo "Conteúdo do diretório:"
+              ls -la
+              echo ""
+              echo "Conteúdo da pasta src/:"
+              ls -la src/
+              echo ""
+              echo "Iniciando compilação..."
+              
+              make clean
+              make -j$(nproc)
+              
+              EXIT_CODE=$?
+              
+              echo ""
+              echo "Resultado:"
+              if [ $EXIT_CODE -eq 0 ]; then
+                echo "✅ Compilação bem sucedida!"
+                ls -la *.elf 2>/dev/null || echo "⚠️ Nenhum .elf encontrado"
+              else
+                echo "❌ Compilação falhou! Código: $EXIT_CODE"
+              fi
+              
+              exit $EXIT_CODE
+            '
+
+      - name: Verificar .elf gerado
+        run: |
           echo "========================================="
-          echo "Resultado da compilação:"
+          echo "Verificando arquivos gerados..."
           echo "========================================="
+          ls -la *.elf 2>/dev/null || echo "❌ NENHUM .elf encontrado!"
           
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ dcbuild executado com sucesso!"
-          else
-            echo "❌ dcbuild falhou com código: $EXIT_CODE"
-            echo ""
-            echo "Verificando se mesmo assim gerou algum .elf..."
-          fi
-          
-          # SEMPRE lista os arquivos .elf, mesmo se falhou
-          echo ""
-          echo "Arquivos .elf encontrados:"
-          ls -la *.elf 2>/dev/null || echo "❌ NENHUM arquivo .elf encontrado!"
-          
-          # Se não tem .elf, falha explicitamente
           if [ ! -f *.elf ] 2>/dev/null; then
-            echo ""
-            echo "========================================="
-            echo "❌ ERRO CRÍTICO: Nenhum .elf foi gerado!"
-            echo "========================================="
-            echo ""
-            echo "Verifique o log acima para ver os erros de compilação."
-            echo "Possíveis problemas:"
-            echo "1. Erro de sintaxe no main.c"
-            echo "2. Makefile incompatível com o KOS"
-            echo "3. Faltando arquivos necessários"
+            echo "❌ ERRO: Nenhum .elf foi gerado!"
             exit 1
           fi
-          
-          exit $EXIT_CODE
+          echo "✅ .elf encontrado!"
 
       - name: Instalar mkdcdisk
         if: success()
@@ -84,24 +106,17 @@ jobs:
           echo "Criando imagem CDI..."
           echo "========================================="
           
-          # Lista todos os .elf para debug
-          echo "Arquivos .elf disponíveis:"
-          ls -la *.elf
-          
-          # Pega o primeiro .elf encontrado
           ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
-          
           if [ -z "$ELF_FILE" ]; then
             echo "❌ ERRO: Nenhum arquivo .elf encontrado!"
             exit 1
           fi
           
-          echo ""
           echo "📦 Usando: $ELF_FILE"
           mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
           
-          if [ $? -eq 0 ]; then
-            echo "✅ CDI criado com sucesso: pong.cdi"
+          if [ -f pong.cdi ]; then
+            echo "✅ CDI criado com sucesso!"
             ls -la pong.cdi
           else
             echo "❌ Falha ao criar CDI"
