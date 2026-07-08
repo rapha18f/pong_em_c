@@ -52,3 +52,18 @@ jobs:
         run: |
           ls -la /opt/toolchains/dc
           ls -la /opt/toolchains/dc/kos
+      - name: Preparar dc-chain
+        run: |
+          cd /opt/toolchains/dc/kos/utils/dc-chain
+          cp Makefile.default.cfg Makefile.cfg
+
+          # Compilar usando apenas um processo.
+          sed -i 's/^makejobs=.*/makejobs=1/' Makefile.cfg || true
+
+          echo "Conteúdo do Makefile.cfg:"
+          cat Makefile.cfg
+
+      - name: Compilar toolchain (SH4)
+        run: |
+          cd /opt/toolchains/dc/kos/utils/dc-chain
+          make
