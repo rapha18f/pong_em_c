@@ -1,9 +1,8 @@
-#buid kos
 name: Build Pong Dreamcast
 
 on:
   push:
-    branches: [ "main", "master" ]
+    # Remove a restrição de branch para testar
   workflow_dispatch:
 
 jobs:
@@ -31,14 +30,9 @@ jobs:
             -w /workspace \
             ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
             /bin/bash -c '
-              # Configurar ambiente KallistiOS
               source /opt/toolchains/dc/kos/environ.sh
-            
-              # Compilar
               make clean
               make -j$(nproc)
-              
-              # Verificar se o .elf foi gerado
               ls -la *.elf || echo "Nenhum .elf encontrado!"
             '
 
