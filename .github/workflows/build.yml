@@ -33,16 +33,17 @@ jobs:
             -w /workspace \
             ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
             /bin/bash -c '
-              echo "Configurando ambiente KOS..."
+              echo "Configurando ambiente KOS para Dreamcast..."
               
-              # Procura o environ.sh
-              if [ -f /opt/kos/environ.sh ]; then
-                source /opt/kos/environ.sh
-              elif [ -f /opt/toolchains/dc/kos/environ.sh ]; then
-                source /opt/toolchains/dc/kos/environ.sh
+              # Procura o environ.dreamcast.sh
+              if [ -f /opt/kos/environ.dreamcast.sh ]; then
+                source /opt/kos/environ.dreamcast.sh
+              elif [ -f /opt/toolchains/dc/kos/environ.dreamcast.sh ]; then
+                source /opt/toolchains/dc/kos/environ.dreamcast.sh
               else
-                echo "❌ environ.sh não encontrado!"
-                find / -name "environ.sh" 2>/dev/null
+                echo "❌ environ.dreamcast.sh não encontrado!"
+                echo "Procurando em toda parte..."
+                find / -name "environ*.sh" 2>/dev/null | grep -i kos
                 exit 1
               fi
               
