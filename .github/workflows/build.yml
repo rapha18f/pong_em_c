@@ -2,37 +2,67 @@ name: Build Pong Dreamcast
 
 on:
   push:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
-  inspect:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-      - uses: docker/login-action@v3
+      - name: Login no GHCR
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Baixar imagem
+      - name: Baixar toolchain
         run: docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
 
-      - name: Inspecionar imagem
+      - name: Compilar o jogo
         run: |
-          docker run --rm ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
-          /bin/bash -c '
-            pwd
-            echo "===== / ====="
-            ls -la /
-            echo "===== /opt ====="
-            ls -la /opt || true
-            echo "===== procurando environ ====="
-            find / -name "environ*" 2>/dev/null
-            echo "===== procurando Makefile.rules ====="
-            find / -name "Makefile.rules" 2>/dev/null
-            echo "===== ambiente ====="
-            env | sort
-          '
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
+            /bin/bash -c '
+              # Configurar ambiente KallistiOS
+              source /opt/toolchains/dc/kos/environ.sh
+            
+              # Compilar
+              make clean
+              make -j$(nproc)
+              
+              # Verificar se o .elf foi gerado
+              ls -la *.elf || echo "Nenhum .elf encontrado!"
+            '
+
+      - name: Instalar mkdcdisk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
+          git clone https://gitlab.com/simulant/mkdcdisc
+          cd mkdcdisc
+          meson setup builddir
+          meson compile -C builddir
+          sudo cp builddir/mkdcdisk /usr/local/bin/
+
+      - name: Criar imagem CDI
+        run: |
+          ELF_FILE=$(ls *.elf | head -n 1)
+          if [ -z "$ELF_FILE" ]; then
+            echo "❌ Arquivo .elf não encontrado!"
+            exit 1
+          fi
+          echo "📦 Gerando CDI a partir de: $ELF_FILE"
+          mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
+
+      - name: Fazer upload do CDI
+        uses: actions/upload-artifact@v4
+        with:
+          name: pong-dreamcast
+          path: pong.cdi
