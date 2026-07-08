@@ -1,3 +1,5 @@
+name: Build Dreamcast Pong
+
 on:
   push:
   workflow_dispatch:
@@ -7,38 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Baixar o projeto
+        uses: actions/checkout@v4
 
       - name: Instalar dependências
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            gawk \
-            patch \
-            bzip2 \
-            tar \
-            make \
-            libgmp-dev \
-            libmpfr-dev \
-            libmpc-dev \
-            gettext \
-            wget \
-            libelf-dev \
-            texinfo \
-            bison \
-            flex \
-            git \
-            build-essential \
-            diffutils \
-            curl \
-            libjpeg-dev \
-            libpng-dev \
-            python3 \
-            pkg-config \
-            cmake \
-            libisofs-dev \
-            meson \
-            ninja-build
+          sudo apt-get install -y git
 
       - name: Clonar KallistiOS
         run: |
@@ -48,34 +25,13 @@ jobs:
           git clone https://github.com/KallistiOSUnchained/KallistiOS.git \
             /opt/toolchains/dc/kos
 
-      - name: Verificar instalação
+      - name: Procurar environ.sh
         run: |
-          ls -la /opt/toolchains/dc
-          ls -la /opt/toolchains/dc/kos
-      - name: Preparar dc-chain
-        run: |
-          cd /opt/toolchains/dc/kos/utils/dc-chain
-          cp Makefile.default.cfg Makefile.cfg
+          echo "=== Procurando em /opt ==="
+          find /opt -name "environ.sh"
 
-          # Compilar usando apenas um processo.
-          sed -i 's/^makejobs=.*/makejobs=1/' Makefile.cfg || true
+          echo "=== Procurando no workspace ==="
+          find "$GITHUB_WORKSPACE" -name "environ.sh"
 
-          echo "Conteúdo do Makefile.cfg:"
-          cat Makefile.cfg
-
-      - name: Compilar toolchain (SH4)
-        run: |
-          cd /opt/toolchains/dc/kos/utils/dc-chain
-          make
-      - name: Configurar ambiente KallistiOS
-        run: |
-          source /opt/toolchains/dc/kos/environ.sh
-          echo "KOS_BASE=$KOS_BASE"
-          echo "KOS_CC=$KOS_CC"
-
-      - name: Compilar Pong
-        shell: bash
-        run: |
-          source /opt/toolchains/dc/kos/environ.sh
-          make
-          ls -lh
+          echo "=== Conteúdo de /opt/toolchains/dc ==="
+          ls -R /opt/toolchains/dc
