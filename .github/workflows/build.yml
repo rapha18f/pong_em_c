@@ -22,18 +22,20 @@ jobs:
       - name: Baixar imagem oficial do KallistiOS
         run: |
           docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
-
-      - name: Compilar Pong
+      - name: Inspecionar imagem
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}:/work \
-            -w /work \
-            ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
-            /bin/bash -c "
-              source /opt/toolchains/dc/kos/environ.sh.master
-              make
-              ls -lh
-            "
+          ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
+          /bin/bash -c "
+          pwd
+          ls /
+          echo
+          echo '=== /opt ==='
+          ls -R /opt || true
+          echo
+          echo '=== variáveis ==='
+          env | sort
+         "
 
       - name: Verificar arquivo gerado
         run: |
