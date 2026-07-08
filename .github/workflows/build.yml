@@ -2,7 +2,6 @@ name: Build Pong Dreamcast
 
 on:
   push:
-    # Remove a restrição de branch para testar
   workflow_dispatch:
 
 jobs:
@@ -23,35 +22,78 @@ jobs:
       - name: Baixar toolchain
         run: docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
 
-      - name: Compilar o jogo
+      - name: Compilar o jogo (COM LOG DETALHADO)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
             /bin/bash -c '
+              echo "========================================="
+              echo "Configurando ambiente KallistiOS..."
+              echo "========================================="
               source /opt/toolchains/dc/kos/environ.sh
+              
+              echo "KOS_BASE = $KOS_BASE"
+              echo "PATH = $PATH"
+              
+              echo ""
+              echo "========================================="
+              echo "Verificando arquivos do projeto..."
+              echo "========================================="
+              ls -la
+              echo ""
+              echo "Conteúdo da pasta src/:"
+              ls -la src/ || echo "Pasta src/ não encontrada!"
+              
+              echo ""
+              echo "========================================="
+              echo "Compilando o jogo..."
+              echo "========================================="
+              
+              # Tenta compilar e captura TODA a saída
               make clean
-              make -j$(nproc)
-              ls -la *.elf || echo "Nenhum .elf encontrado!"
+              make -j$(nproc) 2>&1
+              
+              # Salva o código de saída
+              EXIT_CODE=$?
+              
+              echo ""
+              echo "========================================="
+              echo "Resultado da compilação:"
+              echo "========================================="
+              
+              if [ $EXIT_CODE -eq 0 ]; then
+                echo "✅ COMPILAÇÃO BEM SUCEDIDA!"
+                ls -la *.elf || echo "⚠️ Nenhum .elf encontrado (estranho!)"
+              else
+                echo "❌ COMPILAÇÃO FALHOU! Código: $EXIT_CODE"
+                echo ""
+                echo "Possíveis causas:"
+                echo "1. Erro de sintaxe no main.c"
+                echo "2. Biblioteca do KOS não encontrada"
+                echo "3. Caminho do KOS_BASE incorreto"
+              fi
+              
+              exit $EXIT_CODE
             '
 
-       - name: Instalar mkdcdisk
-         run: |
-           sudo apt-get update
-           sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
-           git clone https://gitlab.com/simulant/mkdcdisc
-           cd mkdcdisc
-           meson setup builddir
-           meson compile -C builddir
-           # O binário está em builddir/mkdcdisc (sem o 'k' no meio)
-           sudo cp builddir/mkdcdisc /usr/local/bin/
-           # Verifica se copiou corretamente
-           which mkdcdisk || echo "mkdcdisk não encontrado"
-
-      - name: Criar imagem CDI
+      - name: Instalar mkdcdisk (se a compilação deu certo)
+        if: success()
         run: |
-          ELF_FILE=$(ls *.elf | head -n 1)
+          sudo apt-get update
+          sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
+          git clone https://gitlab.com/simulant/mkdcdisc
+          cd mkdcdisc
+          meson setup builddir
+          meson compile -C builddir
+          sudo cp builddir/mkdcdisc /usr/local/bin/mkdcdisk
+          echo "✅ mkdcdisk instalado!"
+
+      - name: Criar imagem CDI (se a compilação deu certo)
+        if: success()
+        run: |
+          ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
           if [ -z "$ELF_FILE" ]; then
             echo "❌ Arquivo .elf não encontrado!"
             exit 1
@@ -59,7 +101,8 @@ jobs:
           echo "📦 Gerando CDI a partir de: $ELF_FILE"
           mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
 
-      - name: Fazer upload do CDI
+      - name: Fazer upload do CDI (se criado)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: pong-dreamcast
