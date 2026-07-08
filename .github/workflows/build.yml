@@ -67,3 +67,15 @@ jobs:
         run: |
           cd /opt/toolchains/dc/kos/utils/dc-chain
           make
+      - name: Configurar ambiente KallistiOS
+        run: |
+          source /opt/toolchains/dc/kos/environ.sh
+          echo "KOS_BASE=$KOS_BASE"
+          echo "KOS_CC=$KOS_CC"
+
+      - name: Compilar Pong
+        shell: bash
+        run: |
+          source /opt/toolchains/dc/kos/environ.sh
+          make
+          ls -lh
