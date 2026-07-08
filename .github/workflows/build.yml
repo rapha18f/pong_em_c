@@ -36,15 +36,18 @@ jobs:
               ls -la *.elf || echo "Nenhum .elf encontrado!"
             '
 
-      - name: Instalar mkdcdisk
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
-          git clone https://gitlab.com/simulant/mkdcdisc
-          cd mkdcdisc
-          meson setup builddir
-          meson compile -C builddir
-          sudo cp builddir/mkdcdisk /usr/local/bin/
+       - name: Instalar mkdcdisk
+         run: |
+           sudo apt-get update
+           sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
+           git clone https://gitlab.com/simulant/mkdcdisc
+           cd mkdcdisc
+           meson setup builddir
+           meson compile -C builddir
+           # O binário está em builddir/mkdcdisc (sem o 'k' no meio)
+           sudo cp builddir/mkdcdisc /usr/local/bin/
+           # Verifica se copiou corretamente
+           which mkdcdisk || echo "mkdcdisk não encontrado"
 
       - name: Criar imagem CDI
         run: |
