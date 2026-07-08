@@ -1,4 +1,4 @@
-name: Build Pong Dreamcast (dcbuild)
+name: Build Pong Dreamcast
 
 on:
   push:
@@ -17,11 +17,57 @@ jobs:
           sudo wget -O /usr/local/bin/dcbuild https://raw.githubusercontent.com/Nold360/docker-kallistios-sdk/master/dcbuild.sh
           sudo chmod +x /usr/local/bin/dcbuild
 
-      - name: Compilar com dcbuild
-        run: dcbuild make
+      - name: Compilar com dcbuild (COM LOG COMPLETO)
+        run: |
+          echo "========================================="
+          echo "Iniciando compilação com dcbuild..."
+          echo "========================================="
+          
+          # Executa o dcbuild e captura TODA a saída
+          dcbuild make 2>&1
+          
+          # Salva o código de saída
+          EXIT_CODE=$?
+          
+          echo ""
+          echo "========================================="
+          echo "Resultado da compilação:"
+          echo "========================================="
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ dcbuild executado com sucesso!"
+          else
+            echo "❌ dcbuild falhou com código: $EXIT_CODE"
+            echo ""
+            echo "Verificando se mesmo assim gerou algum .elf..."
+          fi
+          
+          # SEMPRE lista os arquivos .elf, mesmo se falhou
+          echo ""
+          echo "Arquivos .elf encontrados:"
+          ls -la *.elf 2>/dev/null || echo "❌ NENHUM arquivo .elf encontrado!"
+          
+          # Se não tem .elf, falha explicitamente
+          if [ ! -f *.elf ] 2>/dev/null; then
+            echo ""
+            echo "========================================="
+            echo "❌ ERRO CRÍTICO: Nenhum .elf foi gerado!"
+            echo "========================================="
+            echo ""
+            echo "Verifique o log acima para ver os erros de compilação."
+            echo "Possíveis problemas:"
+            echo "1. Erro de sintaxe no main.c"
+            echo "2. Makefile incompatível com o KOS"
+            echo "3. Faltando arquivos necessários"
+            exit 1
+          fi
+          
+          exit $EXIT_CODE
 
       - name: Instalar mkdcdisk
+        if: success()
         run: |
+          echo "Instalando mkdcdisk..."
           sudo apt-get update
           sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
           git clone https://gitlab.com/simulant/mkdcdisc
@@ -29,13 +75,41 @@ jobs:
           meson setup builddir
           meson compile -C builddir
           sudo cp builddir/mkdcdisc /usr/local/bin/mkdcdisk
+          echo "✅ mkdcdisk instalado!"
 
       - name: Criar imagem CDI
+        if: success()
         run: |
-          ELF_FILE=$(ls *.elf | head -n 1)
+          echo "========================================="
+          echo "Criando imagem CDI..."
+          echo "========================================="
+          
+          # Lista todos os .elf para debug
+          echo "Arquivos .elf disponíveis:"
+          ls -la *.elf
+          
+          # Pega o primeiro .elf encontrado
+          ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
+          
+          if [ -z "$ELF_FILE" ]; then
+            echo "❌ ERRO: Nenhum arquivo .elf encontrado!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "📦 Usando: $ELF_FILE"
           mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ CDI criado com sucesso: pong.cdi"
+            ls -la pong.cdi
+          else
+            echo "❌ Falha ao criar CDI"
+            exit 1
+          fi
 
       - name: Fazer upload do CDI
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: pong-dreamcast
