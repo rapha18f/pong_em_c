@@ -22,7 +22,7 @@ jobs:
       - name: Baixar toolchain
         run: docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
 
-      - name: Compilar o jogo (COM LOG DETALHADO)
+      - name: Compilar o jogo
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -30,32 +30,47 @@ jobs:
             ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
             /bin/bash -c '
               echo "========================================="
+              echo "Procurando instalação do KOS..."
+              echo "========================================="
+              
+              # Procura o environ.sh em vários locais possíveis
+              find / -name "environ.sh" 2>/dev/null | grep -i kos
+              
+              echo ""
+              echo "========================================="
               echo "Configurando ambiente KallistiOS..."
               echo "========================================="
-              source /opt/toolchains/dc/kos/environ.sh
+              
+              # Tenta diferentes caminhos para o environ.sh
+              if [ -f /opt/kos/environ.sh ]; then
+                source /opt/kos/environ.sh
+              elif [ -f /opt/toolchains/dc/kos/environ.sh ]; then
+                source /opt/toolchains/dc/kos/environ.sh
+              elif [ -f /kos/environ.sh ]; then
+                source /kos/environ.sh
+              else
+                echo "❌ environ.sh não encontrado!"
+                echo "Procurando em toda parte..."
+                find / -name "environ.sh" 2>/dev/null
+                exit 1
+              fi
               
               echo "KOS_BASE = $KOS_BASE"
               echo "PATH = $PATH"
               
               echo ""
               echo "========================================="
-              echo "Verificando arquivos do projeto..."
+              echo "Verificando Makefile.rules..."
               echo "========================================="
-              ls -la
-              echo ""
-              echo "Conteúdo da pasta src/:"
-              ls -la src/ || echo "Pasta src/ não encontrada!"
+              find $KOS_BASE -name "Makefile.rules" 2>/dev/null || echo "Makefile.rules não encontrado!"
               
               echo ""
               echo "========================================="
               echo "Compilando o jogo..."
               echo "========================================="
-              
-              # Tenta compilar e captura TODA a saída
               make clean
               make -j$(nproc) 2>&1
               
-              # Salva o código de saída
               EXIT_CODE=$?
               
               echo ""
@@ -65,20 +80,15 @@ jobs:
               
               if [ $EXIT_CODE -eq 0 ]; then
                 echo "✅ COMPILAÇÃO BEM SUCEDIDA!"
-                ls -la *.elf || echo "⚠️ Nenhum .elf encontrado (estranho!)"
+                ls -la *.elf 2>/dev/null || echo "⚠️ Nenhum .elf encontrado"
               else
                 echo "❌ COMPILAÇÃO FALHOU! Código: $EXIT_CODE"
-                echo ""
-                echo "Possíveis causas:"
-                echo "1. Erro de sintaxe no main.c"
-                echo "2. Biblioteca do KOS não encontrada"
-                echo "3. Caminho do KOS_BASE incorreto"
               fi
               
               exit $EXIT_CODE
             '
 
-      - name: Instalar mkdcdisk (se a compilação deu certo)
+      - name: Instalar mkdcdisk
         if: success()
         run: |
           sudo apt-get update
@@ -88,9 +98,8 @@ jobs:
           meson setup builddir
           meson compile -C builddir
           sudo cp builddir/mkdcdisc /usr/local/bin/mkdcdisk
-          echo "✅ mkdcdisk instalado!"
 
-      - name: Criar imagem CDI (se a compilação deu certo)
+      - name: Criar imagem CDI
         if: success()
         run: |
           ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
@@ -101,7 +110,7 @@ jobs:
           echo "📦 Gerando CDI a partir de: $ELF_FILE"
           mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
 
-      - name: Fazer upload do CDI (se criado)
+      - name: Fazer upload do CDI
         if: success()
         uses: actions/upload-artifact@v4
         with:
