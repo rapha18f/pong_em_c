@@ -1,4 +1,4 @@
-name: Build Dreamcast Pong
+name: Build Pong Dreamcast
 
 on:
   push:
@@ -9,38 +9,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar o projeto
+      - name: Checkout do projeto
         uses: actions/checkout@v4
 
-      - name: Instalar dependências
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clonar KallistiOS
+      - name: Baixar imagem oficial do KallistiOS
         run: |
-          sudo mkdir -p /opt/toolchains/dc
-          sudo chown $USER:$USER /opt/toolchains/dc
+          docker pull ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable
 
-          git clone https://github.com/KallistiOSUnchained/KallistiOS.git \
-            /opt/toolchains/dc/kos
+      - name: Compilar Pong
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            ghcr.io/kallistiosunchained/dc-toolchain:14.2-stable \
+            /bin/bash -c "
+              source /opt/toolchains/dc/kos/environ.sh.master
+              make
+              ls -lh
+            "
 
-      - name: Procurar environ.sh
+      - name: Verificar arquivo gerado
         run: |
-          echo "=== Procurando em /opt ==="
-          find /opt -name "environ.sh"
+          ls -lh
+          test -f pong.elf
 
-          echo "=== Procurando no workspace ==="
-          find "$GITHUB_WORKSPACE" -name "environ.sh"
-
-          echo "=== Conteúdo de /opt/toolchains/dc ==="
-          ls -R /opt/toolchains/dc
-      - name: Ver conteúdo do README
-        run: |
-          head -100 /opt/toolchains/dc/kos/README.md
-      - name: Procurar instruções do environ
-        run: |
-          grep -R "environ.sh" /opt/toolchains/dc/kos -n
-      - name: Ver workflow oficial do KOS
-        run: |
-          sed -n '1,200p' /opt/toolchains/dc/kos/.github/workflows/pr-kos-check.yaml
+      - name: Publicar pong.elf
+        uses: actions/upload-artifact@v4
+        with:
+          name: pong-elf
+          path: pong.elf
