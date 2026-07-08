@@ -35,3 +35,9 @@ jobs:
 
           echo "=== Conteúdo de /opt/toolchains/dc ==="
           ls -R /opt/toolchains/dc
+      - name: Ver conteúdo do README
+        run: |
+          head -100 /opt/toolchains/dc/kos/README.md
+      - name: Procurar instruções do environ
+        run: |
+          grep -R "environ.sh" /opt/toolchains/dc/kos -n
