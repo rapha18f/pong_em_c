@@ -1,8 +1,5 @@
-name: Build Dreamcast Pong
-
 on:
   push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -10,11 +7,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar o projeto
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Mostrar informações do sistema
+      - name: Instalar dependências
         run: |
-          uname -a
-          gcc --version
-          make --version
+          sudo apt-get update
+          sudo apt-get install -y \
+            gawk \
+            patch \
+            bzip2 \
+            tar \
+            make \
+            libgmp-dev \
+            libmpfr-dev \
+            libmpc-dev \
+            gettext \
+            wget \
+            libelf-dev \
+            texinfo \
+            bison \
+            flex \
+            git \
+            build-essential \
+            diffutils \
+            curl \
+            libjpeg-dev \
+            libpng-dev \
+            python3 \
+            pkg-config \
+            cmake \
+            libisofs-dev \
+            meson \
+            ninja-build
+
+      - name: Clonar KallistiOS
+        run: |
+          sudo mkdir -p /opt/toolchains/dc
+          sudo chown $USER:$USER /opt/toolchains/dc
+
+          git clone https://github.com/KallistiOSUnchained/KallistiOS.git \
+            /opt/toolchains/dc/kos
+
+      - name: Verificar instalação
+        run: |
+          ls -la /opt/toolchains/dc
+          ls -la /opt/toolchains/dc/kos
