@@ -41,3 +41,6 @@ jobs:
       - name: Procurar instruções do environ
         run: |
           grep -R "environ.sh" /opt/toolchains/dc/kos -n
+      - name: Ver workflow oficial do KOS
+        run: |
+          sed -n '1,200p' /opt/toolchains/dc/kos/.github/workflows/pr-kos-check.yaml
