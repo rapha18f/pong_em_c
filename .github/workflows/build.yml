@@ -1,4 +1,4 @@
-name: Build Pong Dreamcast
+name: Build MeuJogo Dreamcast  # ← Mude o nome
 
 on:
   push:
@@ -12,82 +12,61 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # ============================================
-      # PASSO 1: Instalar dcbuild (como no README)
-      # ============================================
       - name: Instalar dcbuild
         run: |
           sudo wget -O /usr/local/bin/dcbuild https://raw.githubusercontent.com/Nold360/docker-kallistios-sdk/master/dcbuild.sh
           sudo chmod +x /usr/local/bin/dcbuild
-          # Não precisa de usermod/reboot no GitHub Actions
 
-      # ============================================
-      # PASSO 2: Compilar com dcbuild
-      # ============================================
       - name: Compilar com dcbuild
         run: |
-          echo "========================================="
-          echo "Compilando com dcbuild (modo não interativo)..."
-          echo "========================================="
-          
-          # O dcbuild precisa de um TTY. Forçamos com script -q
           script -q -e -c "dcbuild make" || true
-          
-          # Verifica se o .elf foi gerado
-          echo ""
-          echo "========================================="
-          echo "Verificando arquivos gerados..."
-          echo "========================================="
-          ls -la *.elf 2>/dev/null || echo "❌ Nenhum .elf encontrado!"
+          ls -la *.elf
 
-      # ============================================
-      # PASSO 3: Instalar mkdcdisk (como no README)
-      # ============================================
-      - name: Instalar mkdcdisk
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
-          git clone https://gitlab.com/simulant/mkdcdisc
-          cd mkdcdisc
-          meson setup builddir
-          meson compile -C builddir
-          # O binário gerado é "mkdcdisc" (sem o 'k' no meio)
-          sudo cp builddir/mkdcdisc /usr/local/bin/mkdcdisk
-          echo "✅ mkdcdisk instalado!"
+      #- name: Instalar mkdcdisk
+       # run: |
+        #  sudo apt-get update
+         # sudo apt-get install -y git meson build-essential pkg-config libisofs-dev
+          #git clone https://gitlab.com/simulant/mkdcdisc
+          #cd mkdcdisc
+          #meson setup builddir
+          #meson compile -C builddir
+          #sudo cp builddir/mkdcdisc /usr/local/bin/mkdcdisk
 
-      # ============================================
-      # PASSO 4: Criar imagem CDI (como no README)
-      # ============================================
-      - name: Criar imagem CDI
+      - name: Preparar .ELF para teste
         run: |
-          echo "========================================="
-          echo "Criando imagem CDI..."
-          echo "========================================="
-          
           ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
           if [ -z "$ELF_FILE" ]; then
             echo "❌ ERRO: Nenhum arquivo .elf encontrado!"
-            echo "Verifique se a compilação foi bem sucedida."
             exit 1
           fi
-          
-          echo "📦 Usando: $ELF_FILE"
-          mkdcdisk -e "$ELF_FILE" -o pong.cdi -n "PONG"
-          
-          if [ -f pong.cdi ]; then
-            echo "✅ CDI criado com sucesso!"
-            ls -la pong.cdi
-          else
-            echo "❌ Falha ao criar CDI"
-            exit 1
-          fi
+          # Mude o nome do arquivo .ELF aqui
+          cp "$ELF_FILE" meu_jogo_test.elf  # ← Mude
 
-      # ============================================
-      # PASSO 5: Upload do artefato
-      # ============================================
-      - name: Fazer upload do CDI
+      #- name: Criar .CDI para projeto final
+        #run: |
+          #ELF_FILE=$(ls *.elf 2>/dev/null | head -n 1)
+         # if [ -z "$ELF_FILE" ]; then
+            #echo "❌ ERRO: Nenhum arquivo .elf encontrado!"
+           # exit 1
+          #fi
+          #DATA=$(date +'%Y%m%d')
+          # Mude o nome do jogo e o nome do arquivo .CDI aqui
+          #mkdcdisk -e "$ELF_FILE" -o "meu_jogo_final_${DATA}.cdi" -n "MEU JOGO"  # ← Mude
+          #mkdcdisk -e "$ELF_FILE" -o meu_jogo_latest.cdi -n "MEU JOGO"          # ← Mude
+
+      - name: Fazer upload dos artefatos
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: pong-dreamcast
-          path: pong.cdi
+          name: meu-jogo-dreamcast  # ← Mude
+          path: |
+            meu_jogo_test.elf       # ← Mude
+            #meu_jogo_latest.cdi     # ← Mude
+            #meu_jogo_final_*.cdi    # ← Mude
+
+      - name: Fazer upload do .ELF (testes rápidos)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meu-jogo-elf-para-testes  # ← Mude
+          path: meu_jogo_test.elf          # ← Mude
